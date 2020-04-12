@@ -28,7 +28,7 @@ def searchMatch(query, item):
         return False
 
 def search(request):
-    query = request.GET.get('search')
+    query = request.GET.get('search').lower()
     allProds = []
     catprods = Product.objects.values('category', 'id')
     cats = {item['category'] for item in catprods}
