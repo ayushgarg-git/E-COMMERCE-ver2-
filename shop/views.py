@@ -1,12 +1,32 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
 from .models import Product, Contact, Orders, OrderUpdate
+from django.contrib.auth.models import User, auth
 from math import ceil
 import json
 from django.views.decorators.csrf import csrf_exempt
 from PayTm import Checksum
 # Create your views here.
 from django.http import HttpResponse
+# REST FRAMEWORK
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Product
+from .serializers import ProductSerializer
+
 MERCHANT_KEY = 'kbzk1DSbJiV_O3p5'
+
+
+class ProductList(APIView):
+
+    def get(self, request):
+        product1 = Product.objects.all()
+        serializer = ProductSerializer(product1, many=True)
+        return Response(serializer.data)
+
+    def post(self):
+        pass
+
 
 def index(request):
     allProds = []
@@ -17,8 +37,9 @@ def index(request):
         n = len(prod)
         nSlides = n // 4 + ceil((n / 4) - (n // 4))
         allProds.append([prod, range(1, nSlides), nSlides])
-    params = {'allProds':allProds}
+    params = {'allProds': allProds}
     return render(request, 'shop/index.html', params)
+
 
 def searchMatch(query, item):
     '''return true only if query matches the item'''
@@ -26,6 +47,7 @@ def searchMatch(query, item):
         return True
     else:
         return False
+
 
 def search(request):
     query = request.GET.get('search').lower()
@@ -52,7 +74,7 @@ def about(request):
 
 def contact(request):
     thank = False
-    if request.method=="POST":
+    if request.method == "POST":
         name = request.POST.get('name', '')
         email = request.POST.get('email', '')
         phone = request.POST.get('phone', '')
@@ -64,17 +86,18 @@ def contact(request):
 
 
 def tracker(request):
-    if request.method=="POST":
+    if request.method == "POST":
         orderId = request.POST.get('orderId', '')
         email = request.POST.get('email', '')
         try:
             order = Orders.objects.filter(order_id=orderId, email=email)
-            if len(order)>0:
+            if len(order) > 0:
                 update = OrderUpdate.objects.filter(order_id=orderId)
                 updates = []
                 for item in update:
                     updates.append({'text': item.update_desc, 'time': item.timestamp})
-                    response = json.dumps({"status":"success", "updates": updates, "itemsJson": order[0].items_json}, default=str)
+                    response = json.dumps({"status": "success", "updates": updates, "itemsJson": order[0].items_json},
+                                          default=str)
                 return HttpResponse(response)
             else:
                 return HttpResponse('{"status":"noitem"}')
@@ -85,14 +108,13 @@ def tracker(request):
 
 
 def productView(request, myid):
-
     # Fetch the product using the id
     product = Product.objects.filter(id=myid)
-    return render(request, 'shop/prodView.html', {'product':product[0]})
+    return render(request, 'shop/prodView.html', {'product': product[0]})
 
 
 def checkout(request):
-    if request.method=="POST":
+    if request.method == "POST":
         items_json = request.POST.get('itemsJson', '')
         name = request.POST.get('name', '')
         amount = request.POST.get('amount', '')
@@ -113,14 +135,14 @@ def checkout(request):
         # Request paytm to transfer the amount to your account after payment by user
         param_dict = {
 
-                'MID': 'kbzk1DSbJiV_O3p5',
-                'ORDER_ID': str(order.order_id),
-                'TXN_AMOUNT': str(amount),
-                'CUST_ID': email,
-                'INDUSTRY_TYPE_ID': 'Retail',
-                'WEBSITE': 'WEBSTAGING',
-                'CHANNEL_ID': 'WEB',
-                'CALLBACK_URL':'http://127.0.0.1:8000/shop/handlerequest/',
+            'MID': 'kbzk1DSbJiV_O3p5',
+            'ORDER_ID': str(order.order_id),
+            'TXN_AMOUNT': str(amount),
+            'CUST_ID': email,
+            'INDUSTRY_TYPE_ID': 'Retail',
+            'WEBSITE': 'WEBSTAGING',
+            'CHANNEL_ID': 'WEB',
+            'CALLBACK_URL': 'http://127.0.0.1:8000/shop/handlerequest/',
 
         }
         param_dict['CHECKSUMHASH'] = Checksum.generate_checksum(param_dict, MERCHANT_KEY)
@@ -146,3 +168,8 @@ def handlerequest(request):
         else:
             print('order was not successful because' + response_dict['RESPMSG'])
     return render(request, 'shop/paymentstatus.html', {'response': response_dict})
+
+
+def logout(request):
+    auth.logout(request)
+    return redirect("/")

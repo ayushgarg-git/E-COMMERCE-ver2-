@@ -1,3 +1,12 @@
 *.pyc
 __pycache__/
 .vscode/
+/accounts/templates/accounts/login.html
+/accounts/templates/accounts/register.html
+/accounts/__init__.py
+/accounts/admin.py
+/accounts/apps.py
+/accounts/models.py
+/accounts/tests.py
+/accounts/urls.py
+/accounts/views.py
